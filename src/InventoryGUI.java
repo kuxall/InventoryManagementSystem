@@ -3,7 +3,6 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.*;
 import java.sql.*;
-import javax.swing.border.TitledBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.table.TableRowSorter;
@@ -13,6 +12,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.File;
 
+@SuppressWarnings("serial")
 public class InventoryGUI extends JFrame {
 
     private JTextField txtItemId, txtItemName, txtQuantity, txtPrice, txtImagePath;
@@ -20,6 +20,7 @@ public class InventoryGUI extends JFrame {
     private JTable table;
     private DefaultTableModel tableModel;
     private JFileChooser fileChooser;
+    private JLabel lblImagePreview;
 
     // Database connection variables
     private Connection conn;
@@ -171,8 +172,8 @@ public class InventoryGUI extends JFrame {
     private void initComponents() {
         // Main Panels
         JPanel panelInput = new JPanel(new GridBagLayout());
-        JPanel panelButtons = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 10));
-        JPanel panelTable = new JPanel(new BorderLayout(10, 10));
+        JPanel panelButtons = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 20));
+        JPanel panelTable = new JPanel(new BorderLayout(20, 20));
 
         // Set Borders with Titles
         panelInput.setBorder(BorderFactory.createTitledBorder("Item Details"));
@@ -180,60 +181,56 @@ public class InventoryGUI extends JFrame {
 
         // GridBagConstraints for Input Fields
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(5, 5, 5, 5);
-        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(10, 10, 10, 10); 
+        gbc.anchor = GridBagConstraints.WEST;   
+        gbc.fill = GridBagConstraints.HORIZONTAL; 
 
-        // Labels and TextFields
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        panelInput.add(new JLabel("Item ID:"), gbc);
+        // Labels and TextFields with consistent alignment
+        JLabel[] labels = {
+            new JLabel("Item ID:"),
+            new JLabel("Item Name:"),
+            new JLabel("Quantity:"),
+            new JLabel("Price:"),
+            new JLabel("Image Path:"),
+            
+        };
 
-        gbc.gridx = 1;
-        txtItemId = new JTextField(15);
-        panelInput.add(txtItemId, gbc);
-
-        gbc.gridx = 0;
-        gbc.gridy = 1;
-        panelInput.add(new JLabel("Item Name:"), gbc);
-
-        gbc.gridx = 1;
-        txtItemName = new JTextField(15);
-        panelInput.add(txtItemName, gbc);
-
-        gbc.gridx = 0;
-        gbc.gridy = 2;
-        panelInput.add(new JLabel("Quantity:"), gbc);
-
-        gbc.gridx = 1;
-        txtQuantity = new JTextField(15);
-        panelInput.add(txtQuantity, gbc);
-
-        gbc.gridx = 0;
-        gbc.gridy = 3;
-        panelInput.add(new JLabel("Price:"), gbc);
-
-        gbc.gridx = 1;
-        txtPrice = new JTextField(15);
-        panelInput.add(txtPrice, gbc);
-
-        gbc.gridx = 0;
-        gbc.gridy = 4;
-        panelInput.add(new JLabel("Image Path:"), gbc);
-
-        gbc.gridx = 1;
-        txtImagePath = new JTextField(15);
+        JTextField[] textFields = {
+            txtItemId = new JTextField(15),
+            txtItemName = new JTextField(15),
+            txtQuantity = new JTextField(15),
+            txtPrice = new JTextField(15),
+            txtImagePath = new JTextField(15)
+        };
         txtImagePath.setEditable(false);
-        panelInput.add(txtImagePath, gbc);
 
+        for (int i = 0; i < labels.length; i++) {
+            gbc.gridx = 0;
+            gbc.gridy = i;
+            panelInput.add(labels[i], gbc);
+
+            gbc.gridx = 1;
+            panelInput.add(textFields[i], gbc);
+        }
+
+        // Add Select Image Button next to Image Path
         gbc.gridx = 2;
+        gbc.gridy = labels.length - 1; 
         btnSelectImage = new JButton("Select Image");
         btnSelectImage.addActionListener(e -> selectImage());
         panelInput.add(btnSelectImage, gbc);
+        
+        // Add Image Preview Label
+        lblImagePreview = new JLabel("Image Preview", JLabel.CENTER);
+        lblImagePreview.setPreferredSize(new Dimension(150, 150)); 
+        lblImagePreview.setBorder(BorderFactory.createLineBorder(Color.BLACK));
+        gbc.gridx = 2;
+        gbc.gridy = 0;  
+        gbc.gridheight = 4; 
+        panelInput.add(lblImagePreview, gbc);
 
-        // Adjust panelInput size
-        panelInput.setPreferredSize(new Dimension(300, getHeight()));
 
-        // Buttons with Icons (optional)
+        // Buttons with Tooltips
         btnAdd = new JButton("Add");
         btnAdd.addActionListener(e -> addItem());
         btnAdd.setToolTipText("Add a new item to the inventory");
@@ -256,9 +253,10 @@ public class InventoryGUI extends JFrame {
         panelButtons.add(btnClear);
 
         // Table with Sorting and Filtering
-        tableModel = new DefaultTableModel(new Object[]{"Item ID", "Item Name", "Quantity", "Price", "Total Price", "Image Path"}, 0);
+        tableModel = new DefaultTableModel(
+            new Object[]{"Item ID", "Item Name", "Quantity", "Price", "Total Price", "Image"}, 0);
         table = new JTable(tableModel);
-        table.setAutoCreateRowSorter(true); // Enable sorting
+        table.setAutoCreateRowSorter(true); 
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         table.addMouseListener(new MouseAdapter() {
             public void mouseClicked(MouseEvent e) {
@@ -272,7 +270,6 @@ public class InventoryGUI extends JFrame {
                 }
             }
         });
-
 
         // Add a search field
         JPanel panelSearch = new JPanel(new FlowLayout(FlowLayout.RIGHT));
@@ -303,43 +300,35 @@ public class InventoryGUI extends JFrame {
 
         // Set up the main frame layout
         Container contentPane = getContentPane();
-        contentPane.setLayout(new BorderLayout(10, 10));
+        contentPane.setLayout(new BorderLayout(20, 20));
 
         // Add panels to the frame
         contentPane.add(panelInput, BorderLayout.WEST);
         contentPane.add(panelButtons, BorderLayout.SOUTH);
         contentPane.add(panelTable, BorderLayout.CENTER);
+
+        // Adjust panelInput size
+        panelInput.setPreferredSize(new Dimension(500, 30));
+    }
+    
+ // Resize image to fit JLabel dimensions
+    private ImageIcon resizeImage(String imagePath) {
+        ImageIcon myImage = new ImageIcon(imagePath);
+        Image img = myImage.getImage();
+        Image img2 = img.getScaledInstance(lblImagePreview.getWidth(), lblImagePreview.getHeight(), Image.SCALE_SMOOTH);
+        return new ImageIcon(img2);
     }
 
-    private boolean validateFields() {
-        if (txtItemId.getText().trim().isEmpty() ||
-                txtItemName.getText().trim().isEmpty() ||
-                txtQuantity.getText().trim().isEmpty() ||
-                txtPrice.getText().trim().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Please fill all fields.", "Incomplete Data", JOptionPane.WARNING_MESSAGE);
-            return false;
+    private void selectImage() {
+        if (fileChooser == null) {
+            fileChooser = new JFileChooser();
         }
-        try {
-            int quantity = Integer.parseInt(txtQuantity.getText().trim());
-            if (quantity < 0) {
-                JOptionPane.showMessageDialog(this, "Quantity cannot be negative.", "Invalid Input", JOptionPane.WARNING_MESSAGE);
-                return false;
-            }
-        } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(this, "Quantity must be an integer.", "Invalid Input", JOptionPane.WARNING_MESSAGE);
-            return false;
-        }
-        try {
-            double price = Double.parseDouble(txtPrice.getText().trim());
-            if (price < 0) {
-                JOptionPane.showMessageDialog(this, "Price cannot be negative.", "Invalid Input", JOptionPane.WARNING_MESSAGE);
-                return false;
-            }
-        } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(this, "Price must be a number.", "Invalid Input", JOptionPane.WARNING_MESSAGE);
-            return false;
-        }
-        return true;
+        int option = fileChooser.showOpenDialog(this);
+        if (option == JFileChooser.APPROVE_OPTION) {
+            File file = fileChooser.getSelectedFile();
+            String imagePath = file.getAbsolutePath();
+            txtImagePath.setText(imagePath);
+            lblImagePreview.setIcon(resizeImage(imagePath));        }
     }
 
     private void createMenuBar() {
@@ -353,9 +342,7 @@ public class InventoryGUI extends JFrame {
         menuFile.add(miExport);
         menuFile.addSeparator();
         menuFile.add(miExit);
-
         menuBar.add(menuFile);
-
         setJMenuBar(menuBar);
     }
 
@@ -477,17 +464,8 @@ public class InventoryGUI extends JFrame {
         txtQuantity.setText("");
         txtPrice.setText("");
         txtImagePath.setText("");
+        lblImagePreview.setIcon(null); 
         table.clearSelection();
     }
 
-    private void selectImage() {
-        if (fileChooser == null) {
-            fileChooser = new JFileChooser();
-        }
-        int option = fileChooser.showOpenDialog(this);
-        if (option == JFileChooser.APPROVE_OPTION) {
-            File file = fileChooser.getSelectedFile();
-            txtImagePath.setText(file.getAbsolutePath());
-        }
-    }
 }
