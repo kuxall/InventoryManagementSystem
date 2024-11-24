@@ -4,7 +4,7 @@ public class InventoryManagementSystem {
     public static void main(String[] args) {
         // Set the Nimbus Look and Feel
         try {
-            for (UIManager.LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
+            for (UIManager.LookAndFeelInfo info : UIManager.getInstalledLook and Feels()) {
                 if ("Nimbus".equals(info.getName())) {
                     UIManager.setLookAndFeel(info.getClassName());
                     break;
@@ -16,10 +16,10 @@ public class InventoryManagementSystem {
             e.printStackTrace();
         }
 
-        // Create and display the GUI
+        // Create and display the login screen
         SwingUtilities.invokeLater(() -> {
-            InventoryGUI gui = new InventoryGUI();
-            gui.setVisible(true);
+            LoginScreen loginScreen = new LoginScreen();
+            loginScreen.setVisible(true);
         });
     }
 }
