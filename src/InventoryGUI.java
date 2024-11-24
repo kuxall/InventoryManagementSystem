@@ -15,10 +15,11 @@ import java.io.File;
 
 public class InventoryGUI extends JFrame {
 
-    private JTextField txtItemId, txtItemName, txtQuantity, txtPrice;
-    private JButton btnAdd, btnUpdate, btnDelete, btnClear;
+    private JTextField txtItemId, txtItemName, txtQuantity, txtPrice, txtImagePath;
+    private JButton btnAdd, btnUpdate, btnDelete, btnClear, btnSelectImage;
     private JTable table;
     private DefaultTableModel tableModel;
+    private JFileChooser fileChooser;
 
     // Database connection variables
     private Connection conn;
@@ -71,6 +72,7 @@ public class InventoryGUI extends JFrame {
                 int quantity = rs.getInt("quantity");
                 double price = rs.getDouble("price");
                 double totalPrice = quantity * price;
+                String imagePath = rs.getString("image_path");
 
                 // Format price and totalPrice to two decimal places
                 String priceStr = String.format("%.2f", price);
@@ -82,7 +84,8 @@ public class InventoryGUI extends JFrame {
                     itemName,
                     quantity,
                     priceStr,
-                    totalPriceStr
+                    totalPriceStr,
+                    imagePath
                 });
             }
 
@@ -213,6 +216,20 @@ public class InventoryGUI extends JFrame {
         txtPrice = new JTextField(15);
         panelInput.add(txtPrice, gbc);
 
+        gbc.gridx = 0;
+        gbc.gridy = 4;
+        panelInput.add(new JLabel("Image Path:"), gbc);
+
+        gbc.gridx = 1;
+        txtImagePath = new JTextField(15);
+        txtImagePath.setEditable(false);
+        panelInput.add(txtImagePath, gbc);
+
+        gbc.gridx = 2;
+        btnSelectImage = new JButton("Select Image");
+        btnSelectImage.addActionListener(e -> selectImage());
+        panelInput.add(btnSelectImage, gbc);
+
         // Adjust panelInput size
         panelInput.setPreferredSize(new Dimension(300, getHeight()));
 
@@ -239,7 +256,7 @@ public class InventoryGUI extends JFrame {
         panelButtons.add(btnClear);
 
         // Table with Sorting and Filtering
-        tableModel = new DefaultTableModel(new Object[]{"Item ID", "Item Name", "Quantity", "Price", "Total Price"}, 0);
+        tableModel = new DefaultTableModel(new Object[]{"Item ID", "Item Name", "Quantity", "Price", "Total Price", "Image Path"}, 0);
         table = new JTable(tableModel);
         table.setAutoCreateRowSorter(true); // Enable sorting
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -251,6 +268,7 @@ public class InventoryGUI extends JFrame {
                     txtItemName.setText(table.getValueAt(row, 1).toString());
                     txtQuantity.setText(table.getValueAt(row, 2).toString());
                     txtPrice.setText(table.getValueAt(row, 3).toString());
+                    txtImagePath.setText(table.getValueAt(row, 5).toString());
                 }
             }
         });
@@ -389,11 +407,12 @@ public class InventoryGUI extends JFrame {
 
     private void addItem() {
         if (validateFields()) {
-            try (PreparedStatement pst = conn.prepareStatement("INSERT INTO inventory(item_id, item_name, quantity, price) VALUES(?,?,?,?)")) {
+            try (PreparedStatement pst = conn.prepareStatement("INSERT INTO inventory(item_id, item_name, quantity, price, image_path) VALUES(?,?,?,?,?)")) {
                 pst.setString(1, txtItemId.getText().trim());
                 pst.setString(2, txtItemName.getText().trim());
                 pst.setInt(3, Integer.parseInt(txtQuantity.getText().trim()));
                 pst.setDouble(4, Double.parseDouble(txtPrice.getText().trim()));
+                pst.setString(5, txtImagePath.getText().trim());
                 pst.executeUpdate();
                 JOptionPane.showMessageDialog(this, "Item added successfully.");
                 loadTable();
@@ -407,11 +426,12 @@ public class InventoryGUI extends JFrame {
 
     private void updateItem() {
         if (validateFields()) {
-            try (PreparedStatement pst = conn.prepareStatement("UPDATE inventory SET item_name=?, quantity=?, price=? WHERE item_id=?")) {
+            try (PreparedStatement pst = conn.prepareStatement("UPDATE inventory SET item_name=?, quantity=?, price=?, image_path=? WHERE item_id=?")) {
                 pst.setString(1, txtItemName.getText().trim());
                 pst.setInt(2, Integer.parseInt(txtQuantity.getText().trim()));
                 pst.setDouble(3, Double.parseDouble(txtPrice.getText().trim()));
-                pst.setString(4, txtItemId.getText().trim());
+                pst.setString(4, txtImagePath.getText().trim());
+                pst.setString(5, txtItemId.getText().trim());
                 int affectedRows = pst.executeUpdate();
                 if (affectedRows > 0) {
                     JOptionPane.showMessageDialog(this, "Item updated successfully.");
@@ -456,6 +476,18 @@ public class InventoryGUI extends JFrame {
         txtItemName.setText("");
         txtQuantity.setText("");
         txtPrice.setText("");
+        txtImagePath.setText("");
         table.clearSelection();
+    }
+
+    private void selectImage() {
+        if (fileChooser == null) {
+            fileChooser = new JFileChooser();
+        }
+        int option = fileChooser.showOpenDialog(this);
+        if (option == JFileChooser.APPROVE_OPTION) {
+            File file = fileChooser.getSelectedFile();
+            txtImagePath.setText(file.getAbsolutePath());
+        }
     }
 }
