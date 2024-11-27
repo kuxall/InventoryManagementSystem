@@ -1,12 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
   <component name="ChangeListManager">
     <list default="true" id="230ec4be-0764-41d1-a64a-0b3fe83b4507" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.classpath" beforeDir="false" afterPath="$PROJECT_DIR$/.classpath" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/bin/InventoryGUI$1.class" beforeDir="false" afterPath="$PROJECT_DIR$/bin/InventoryGUI$1.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/bin/InventoryGUI$2.class" beforeDir="false" afterPath="$PROJECT_DIR$/bin/InventoryGUI$2.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/bin/InventoryGUI.class" beforeDir="false" afterPath="$PROJECT_DIR$/bin/InventoryGUI.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/bin/lib/flatlaf-3.2.jar" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/InventoryManagementSystem.class" beforeDir="false" afterPath="$PROJECT_DIR$/bin/InventoryManagementSystem.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/InventoryGUI.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/InventoryGUI.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/InventoryManagementSystem.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/InventoryManagementSystem.java" afterDir="false" />
     </list>
@@ -18,9 +22,18 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 7
-}]]></component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {}
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/kuxall/InventoryManagementSystem.git&quot;,
+    &quot;accountId&quot;: &quot;a5d815f7-41fc-4057-8c5f-19c4a4aaeff6&quot;
+  }
+}</component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 7
+}</component>
   <component name="ProjectId" id="2pJc6fyZR4P849fYjZfmPiuYOpz" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
@@ -29,9 +42,14 @@
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
     "RunOnceActivity.ShowReadmeOnStart": "true",
-    "git-widget-placeholder": "93a2aae8",
+    "git-widget-placeholder": "main",
     "kotlin-language-version-configured": "true",
     "last_opened_file_path": "C:/Users/Owner/eclipse-workspace/InventoryManagementSystem"
+  },
+  "keyToStringList": {
+    "com.intellij.ide.scratch.ScratchImplUtil$2/New Scratch File": [
+      "JAVA"
+    ]
   }
 }]]></component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />

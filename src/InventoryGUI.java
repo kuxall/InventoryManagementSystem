@@ -1,471 +1,352 @@
 import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
-import java.awt.*;
-import java.awt.event.*;
-import java.sql.*;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableRowSorter;
-import javax.swing.RowFilter;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.File;
+import javax.swing.filechooser.FileNameExtensionFilter;
+
+import java.awt.*;
+import java.awt.event.*;
+import java.io.*;
+import java.sql.*;
+import java.util.Vector;
 
 @SuppressWarnings("serial")
 public class InventoryGUI extends JFrame {
-
-    private JTextField txtItemId, txtItemName, txtQuantity, txtPrice, txtImagePath;
-    private JButton btnAdd, btnUpdate, btnDelete, btnClear, btnSelectImage;
-    private JTable table;
-    private DefaultTableModel tableModel;
-    private JFileChooser fileChooser;
-    private JLabel lblImagePreview;
-
-    // Database connection variables
+    private String currentUserRole;
     private Connection conn;
 
-    public InventoryGUI() {
+    private JButton btnAdd, btnUpdate, btnDelete, btnExportCSV;
+    private JTable table;
+    private JTextField searchField;
+    private JLabel lblImagePreview;
+    private JTextField txtImagePath;
+    private JFileChooser fileChooser;
+
+    public InventoryGUI(Connection conn) {
+        this.conn = conn;
+
         setTitle("Inventory Management System");
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
-        initComponents();
-        createMenuBar();
-        connect();
-        loadTable();
-        pack();
-        setLocationRelativeTo(null);
-    }
+        setSize(900, 700);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(new BorderLayout());
 
-    // Method to establish a connection to the database
-    private void connect() {
-        try {
-            // Load the MySQL JDBC driver
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            // Database credentials
-            String url = "jdbc:mysql://localhost:3306/inventory_db?useSSL=false&serverTimezone=UTC";
-            String username = "root"; 
-            String password = "root"; 
-            // Establish the connection
-            conn = DriverManager.getConnection(url, username, password);
-            System.out.println("Connected to the database successfully.");
-
-        } catch (ClassNotFoundException e) {
-            JOptionPane.showMessageDialog(this, "MySQL JDBC Driver not found.", "Driver Error", JOptionPane.ERROR_MESSAGE);
-            e.printStackTrace();
-            System.exit(0);
-        } catch (SQLException e) {
-            JOptionPane.showMessageDialog(this, "Cannot connect to the database.\n" + e.getMessage(), "Database Connection Error", JOptionPane.ERROR_MESSAGE);
-            e.printStackTrace();
-            System.exit(0);
-        }
-    }
-
-    // Method to load data from the database into the table
-    private void loadTable() {
-        try (PreparedStatement pst = conn.prepareStatement("SELECT * FROM inventory");
-             ResultSet rs = pst.executeQuery()) {
-
-            tableModel.setRowCount(0);
-
-            while (rs.next()) {
-                String itemId = rs.getString("item_id");
-                String itemName = rs.getString("item_name");
-                int quantity = rs.getInt("quantity");
-                double price = rs.getDouble("price");
-                double totalPrice = quantity * price;
-                String imagePath = rs.getString("image_path");
-
-                // Format price and totalPrice to two decimal places
-                String priceStr = String.format("%.2f", price);
-                String totalPriceStr = String.format("%.2f", totalPrice);
-
-                // Add the row to the table model
-                tableModel.addRow(new Object[]{
-                    itemId,
-                    itemName,
-                    quantity,
-                    priceStr,
-                    totalPriceStr,
-                    imagePath
-                });
-            }
-
-        } catch (SQLException e) {
-            JOptionPane.showMessageDialog(this, "Failed to load data from the database.\n" + e.getMessage(), "Database Error", JOptionPane.ERROR_MESSAGE);
-            e.printStackTrace();
-        }
-    }
-    
-    private boolean validateFields() {
-        // Validate Item ID
-        String itemId = txtItemId.getText().trim();
-        if (itemId.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Item ID cannot be empty.", "Invalid Input", JOptionPane.WARNING_MESSAGE);
-            return false;
-        }
-        if (!itemId.matches("^[a-zA-Z0-9_-]+$")) {
-            JOptionPane.showMessageDialog(this, "Item ID can only contain letters, numbers, underscores, and hyphens.", "Invalid Input", JOptionPane.WARNING_MESSAGE);
-            return false;
-        }
-        if (itemId.length() > 20) {
-            JOptionPane.showMessageDialog(this, "Item ID cannot exceed 20 characters.", "Invalid Input", JOptionPane.WARNING_MESSAGE);
-            return false;
-        }
-
-        // Validate Item Name
-        String itemName = txtItemName.getText().trim();
-        if (itemName.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Item Name cannot be empty.", "Invalid Input", JOptionPane.WARNING_MESSAGE);
-            return false;
-        }
-        if (itemName.length() > 100) {
-            JOptionPane.showMessageDialog(this, "Item Name cannot exceed 100 characters.", "Invalid Input", JOptionPane.WARNING_MESSAGE);
-            return false;
-        }
-
-        // Validate Quantity
-        String quantityStr = txtQuantity.getText().trim();
-        if (quantityStr.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Quantity cannot be empty.", "Invalid Input", JOptionPane.WARNING_MESSAGE);
-            return false;
-        }
-        int quantity;
-        try {
-            quantity = Integer.parseInt(quantityStr);
-            if (quantity <= 0) {
-                JOptionPane.showMessageDialog(this, "Quantity must be a positive integer greater than zero.", "Invalid Input", JOptionPane.WARNING_MESSAGE);
-                return false;
-            }
-        } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(this, "Quantity must be a valid integer.", "Invalid Input", JOptionPane.WARNING_MESSAGE);
-            return false;
-        }
-
-        // Validate Price
-        String priceStr = txtPrice.getText().trim();
-        if (priceStr.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Price cannot be empty.", "Invalid Input", JOptionPane.WARNING_MESSAGE);
-            return false;
-        }
-        double price;
-        try {
-            price = Double.parseDouble(priceStr);
-            if (price <= 0) {
-                JOptionPane.showMessageDialog(this, "Price must be a positive number greater than zero.", "Invalid Input", JOptionPane.WARNING_MESSAGE);
-                return false;
-            }
-            if (priceStr.contains(".")) {
-                int decimalPlaces = priceStr.substring(priceStr.indexOf('.') + 1).length();
-                if (decimalPlaces > 2) {
-                    JOptionPane.showMessageDialog(this, "Price cannot have more than two decimal places.", "Invalid Input", JOptionPane.WARNING_MESSAGE);
-                    return false;
+        // Handle window close to close the database connection
+        addWindowListener(new WindowAdapter() {
+            public void windowClosing(WindowEvent e) {
+                try {
+                    if (conn != null && !conn.isClosed()) {
+                        conn.close();
+                        System.out.println("Database connection closed.");
+                    }
+                } catch (SQLException ex) {
+                    ex.printStackTrace();
                 }
             }
-        } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(this, "Price must be a valid number.", "Invalid Input", JOptionPane.WARNING_MESSAGE);
-            return false;
-        }
+        });
 
-        return true;
-    }
-    
-    private void initComponents() {
-        // Main Panels
-        JPanel panelInput = new JPanel(new GridBagLayout());
-        JPanel panelButtons = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 20));
-        JPanel panelTable = new JPanel(new BorderLayout(20, 20));
-
-        // Set Borders with Titles
-        panelInput.setBorder(BorderFactory.createTitledBorder("Item Details"));
-        panelTable.setBorder(BorderFactory.createTitledBorder("Inventory Items"));
-
-        // GridBagConstraints for Input Fields
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(10, 10, 10, 10); 
-        gbc.anchor = GridBagConstraints.WEST;   
-        gbc.fill = GridBagConstraints.HORIZONTAL; 
-
-        // Labels and TextFields with consistent alignment
-        JLabel[] labels = {
-            new JLabel("Item ID:"),
-            new JLabel("Item Name:"),
-            new JLabel("Quantity:"),
-            new JLabel("Price:"),
-            new JLabel("Image Path:"),
-            
-        };
-
-        JTextField[] textFields = {
-            txtItemId = new JTextField(15),
-            txtItemName = new JTextField(15),
-            txtQuantity = new JTextField(15),
-            txtPrice = new JTextField(15),
-            txtImagePath = new JTextField(15)
-        };
+        // Create buttons panel
+        JPanel panel = new JPanel();
+        btnAdd = new JButton("Add Item");
+        btnUpdate = new JButton("Update Item");
+        btnDelete = new JButton("Delete Item");
+        btnExportCSV = new JButton("Export to CSV");
+        searchField = new JTextField(20);
+        lblImagePreview = new JLabel("Image Preview", JLabel.CENTER);
+        txtImagePath = new JTextField(20);
         txtImagePath.setEditable(false);
 
-        for (int i = 0; i < labels.length; i++) {
-            gbc.gridx = 0;
-            gbc.gridy = i;
-            panelInput.add(labels[i], gbc);
+        panel.add(btnAdd);
+        panel.add(btnUpdate);
+        panel.add(btnDelete);
+        panel.add(new JLabel("Search:"));
+        panel.add(searchField);
+        panel.add(btnExportCSV);
 
-            gbc.gridx = 1;
-            panelInput.add(textFields[i], gbc);
-        }
+        add(panel, BorderLayout.NORTH);
 
-        // Add Select Image Button next to Image Path
-        gbc.gridx = 2;
-        gbc.gridy = labels.length - 1; 
-        btnSelectImage = new JButton("Select Image");
-        btnSelectImage.addActionListener(e -> selectImage());
-        panelInput.add(btnSelectImage, gbc);
-        
-        // Add Image Preview Label
-        lblImagePreview = new JLabel("Image Preview", JLabel.CENTER);
-        lblImagePreview.setPreferredSize(new Dimension(150, 150)); 
+        // Table for inventory items
+        String[] columnNames = {"ID", "Item Name", "Category", "Quantity", "Price", "Image Path"};
+        table = new JTable(new DefaultTableModel(columnNames, 0));
+        JScrollPane scrollPane = new JScrollPane(table);
+        add(scrollPane, BorderLayout.CENTER);
+
+        lblImagePreview.setPreferredSize(new Dimension(150, 150));
         lblImagePreview.setBorder(BorderFactory.createLineBorder(Color.BLACK));
-        gbc.gridx = 2;
-        gbc.gridy = 0;  
-        gbc.gridheight = 4; 
-        panelInput.add(lblImagePreview, gbc);
+        panel.add(lblImagePreview);
 
+        // Show login dialog
+        showLogin();
 
-        // Buttons with Tooltips
-        btnAdd = new JButton("Add");
+        // Button Actions
         btnAdd.addActionListener(e -> addItem());
-        btnAdd.setToolTipText("Add a new item to the inventory");
-
-        btnUpdate = new JButton("Update");
         btnUpdate.addActionListener(e -> updateItem());
-        btnUpdate.setToolTipText("Update the selected item");
-
-        btnDelete = new JButton("Delete");
         btnDelete.addActionListener(e -> deleteItem());
-        btnDelete.setToolTipText("Delete the selected item");
-
-        btnClear = new JButton("Clear");
-        btnClear.addActionListener(e -> clearFields());
-        btnClear.setToolTipText("Clear input fields");
-
-        panelButtons.add(btnAdd);
-        panelButtons.add(btnUpdate);
-        panelButtons.add(btnDelete);
-        panelButtons.add(btnClear);
-
-        // Table with Sorting and Filtering
-        tableModel = new DefaultTableModel(
-            new Object[]{"Item ID", "Item Name", "Quantity", "Price", "Total Price", "Image"}, 0);
-        table = new JTable(tableModel);
-        table.setAutoCreateRowSorter(true); 
-        table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        table.addMouseListener(new MouseAdapter() {
-            public void mouseClicked(MouseEvent e) {
-                int row = table.getSelectedRow();
-                if (row != -1) {
-                    txtItemId.setText(table.getValueAt(row, 0).toString());
-                    txtItemName.setText(table.getValueAt(row, 1).toString());
-                    txtQuantity.setText(table.getValueAt(row, 2).toString());
-                    txtPrice.setText(table.getValueAt(row, 3).toString());
-                    txtImagePath.setText(table.getValueAt(row, 5).toString());
-                }
-            }
+        btnExportCSV.addActionListener(e -> exportToCSV());
+        searchField.getDocument().addDocumentListener(new DocumentListener() {
+            public void insertUpdate(DocumentEvent e) { searchItems(); }
+            public void removeUpdate(DocumentEvent e) { searchItems(); }
+            public void changedUpdate(DocumentEvent e) { searchItems(); }
         });
-
-        // Add a search field
-        JPanel panelSearch = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        panelSearch.add(new JLabel("Search:"));
-        JTextField txtSearch = new JTextField(20);
-        panelSearch.add(txtSearch);
-
-        // Implementing Row Filter
-        TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(tableModel);
-        table.setRowSorter(sorter);
-
-        txtSearch.getDocument().addDocumentListener(new DocumentListener() {
-            public void insertUpdate(DocumentEvent e) {
-                search(txtSearch.getText(), sorter);
-            }
-
-            public void removeUpdate(DocumentEvent e) {
-                search(txtSearch.getText(), sorter);
-            }
-
-            public void changedUpdate(DocumentEvent e) {
-                search(txtSearch.getText(), sorter);
-            }
-        });
-
-        panelTable.add(panelSearch, BorderLayout.NORTH);
-        panelTable.add(new JScrollPane(table), BorderLayout.CENTER);
-
-        // Set up the main frame layout
-        Container contentPane = getContentPane();
-        contentPane.setLayout(new BorderLayout(20, 20));
-
-        // Add panels to the frame
-        contentPane.add(panelInput, BorderLayout.WEST);
-        contentPane.add(panelButtons, BorderLayout.SOUTH);
-        contentPane.add(panelTable, BorderLayout.CENTER);
-
-        // Adjust panelInput size
-        panelInput.setPreferredSize(new Dimension(500, 30));
-    }
-    
- // Resize image to fit JLabel dimensions
-    private ImageIcon resizeImage(String imagePath) {
-        ImageIcon myImage = new ImageIcon(imagePath);
-        Image img = myImage.getImage();
-        Image img2 = img.getScaledInstance(lblImagePreview.getWidth(), lblImagePreview.getHeight(), Image.SCALE_SMOOTH);
-        return new ImageIcon(img2);
     }
 
-    private void selectImage() {
-        if (fileChooser == null) {
-            fileChooser = new JFileChooser();
+    // Login Dialog
+    private void showLogin() {
+        LoginManager loginManager = new LoginManager(conn);
+        String role = loginManager.showLoginDialog();
+        if (role != null) {
+            currentUserRole = role;
+            enableAdminFeatures(role.equals("admin"));
+            refreshTable();
+        } else {
+            System.exit(0); // Exit on failed login
         }
+    }
+
+    // Enable features based on user role
+    private void enableAdminFeatures(boolean isAdmin) {
+        btnAdd.setEnabled(isAdmin);
+        btnUpdate.setEnabled(isAdmin);
+        btnDelete.setEnabled(isAdmin);
+        btnExportCSV.setEnabled(isAdmin);
+        table.setEnabled(isAdmin);
+    }
+
+    // Refresh table with data from database
+    private void refreshTable() {
+        try {
+            String query = "SELECT * FROM inventory";
+            try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(query)) {
+                table.setModel(buildTableModel(rs));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Error refreshing table: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    // Add Item
+    private void addItem() {
+        if (!"admin".equals(currentUserRole)) {
+            JOptionPane.showMessageDialog(this, "You do not have permission to add items.", "Permission Denied", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+
+        String itemName = JOptionPane.showInputDialog(this, "Enter item name:");
+        String category = JOptionPane.showInputDialog(this, "Enter item category:");
+        String quantity = JOptionPane.showInputDialog(this, "Enter item quantity:");
+        String price = JOptionPane.showInputDialog(this, "Enter item price:");
+        String threshold = JOptionPane.showInputDialog(this, "Enter inventory threshold:");
+
+
+        if (fileChooser == null) {
+        	fileChooser = new JFileChooser();
+        	fileChooser.setFileFilter(new FileNameExtensionFilter("Image Files", "jpg", "png", "jpeg"));
+        }
+        
+        if (threshold == null || threshold.isEmpty()) {
+            threshold = "0"; // Default to 0 if not provided
+        }
+        
         int option = fileChooser.showOpenDialog(this);
         if (option == JFileChooser.APPROVE_OPTION) {
-            File file = fileChooser.getSelectedFile();
-            String imagePath = file.getAbsolutePath();
-            txtImagePath.setText(imagePath);
-            lblImagePreview.setIcon(resizeImage(imagePath));        }
+        	File file = fileChooser.getSelectedFile();
+        	txtImagePath.setText(file.getAbsolutePath());
+        	lblImagePreview.setIcon(resizeImage(file.getAbsolutePath()));
+        }
+        if (itemName == null || category == null || quantity == null || price == null || itemName.isEmpty() || category.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "All fields must be filled.", "Input Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        try {
+            String query = "INSERT INTO inventory (item_name, category, quantity, price, image_path, threshold) VALUES (?, ?, ?, ?, ?, ?)";
+            try (PreparedStatement pst = conn.prepareStatement(query)) {
+                pst.setString(1, itemName);
+                pst.setString(2, category);
+                pst.setInt(3, Integer.parseInt(quantity));
+                pst.setDouble(4, Double.parseDouble(price));
+                pst.setString(5, txtImagePath.getText());
+                pst.setInt(6, Integer.parseInt(threshold));
+
+                pst.executeUpdate();
+                JOptionPane.showMessageDialog(this, "Item added successfully.");
+                refreshTable();
+                checkLowInventory();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Error adding item: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
-    private void createMenuBar() {
-        JMenuBar menuBar = new JMenuBar();
+    // Update Item
+    private void updateItem() {
+        if (!"admin".equals(currentUserRole)) {
+            JOptionPane.showMessageDialog(this, "You do not have permission to update items.", "Permission Denied", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
 
-        JMenu menuFile = new JMenu("File");
-        JMenuItem miExport = new JMenuItem("Export to CSV");
-        miExport.addActionListener(e -> exportToCSV());
-        JMenuItem miExit = new JMenuItem("Exit");
-        miExit.addActionListener(e -> System.exit(0));
-        menuFile.add(miExport);
-        menuFile.addSeparator();
-        menuFile.add(miExit);
-        menuBar.add(menuFile);
-        setJMenuBar(menuBar);
+        int selectedRow = table.getSelectedRow();
+        if (selectedRow == -1) {
+            JOptionPane.showMessageDialog(this, "Please select an item to update.", "No item selected", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        String itemId = table.getValueAt(selectedRow, 0).toString();
+        String newQuantity = JOptionPane.showInputDialog(this, "Enter new quantity:");
+        String newPrice = JOptionPane.showInputDialog(this, "Enter new price:");
+        String newThreshold = JOptionPane.showInputDialog(this, "Enter new threshold value:", currentthreshold);
+
+
+        if (newQuantity == null || newPrice == null) {
+            JOptionPane.showMessageDialog(this, "Update canceled.", "Info", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+       
+        try {
+            String query = "UPDATE inventory SET quantity = ?, price = ?, image_path = ? WHERE id = ?";
+            try (PreparedStatement pst = conn.prepareStatement(query)) {
+            	if (newThreshold == null) newThreshold = "0";
+             	pst.setInt(4, Integer.parseInt(newThreshold)); 
+                pst.setInt(1, Integer.parseInt(newQuantity));
+                pst.setDouble(2, Double.parseDouble(newPrice));
+                pst.setString(3, txtImagePath.getText()); 
+                pst.setInt(4, Integer.parseInt(itemId));
+                pst.executeUpdate();
+                JOptionPane.showMessageDialog(this, "Item updated successfully.");
+                refreshTable();
+                checkLowInventory();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Error updating item: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
+    // Delete Item
+    private void deleteItem() {
+        if (!"admin".equals(currentUserRole)) {
+            JOptionPane.showMessageDialog(this, "You do not have permission to delete items.", "Permission Denied", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        int selectedRow = table.getSelectedRow();
+        if (selectedRow == -1) {
+            JOptionPane.showMessageDialog(this, "Please select an item to delete.", "No item selected", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        String itemId = table.getValueAt(selectedRow, 0).toString();
+        int confirm = JOptionPane.showConfirmDialog(this, "Are you sure you want to delete this item?", "Confirm Delete", JOptionPane.YES_NO_OPTION);
+        if (confirm == JOptionPane.YES_OPTION) {
+            try {
+                String query = "DELETE FROM inventory WHERE id = ?";
+                try (PreparedStatement pst = conn.prepareStatement(query)) {
+                    pst.setInt(1, Integer.parseInt(itemId));
+                    pst.executeUpdate();
+                    JOptionPane.showMessageDialog(this, "Item deleted successfully.");
+                    refreshTable();
+                    checkLowInventory();
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+                JOptionPane.showMessageDialog(this, "Error deleting item: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    
+    private void checkLowInventory() {
+        try {
+            String query = "SELECT item_name, quantity, threshold FROM inventory WHERE quantity < threshold";
+            try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(query)) {
+                StringBuilder alertMessage = new StringBuilder();
+                while (rs.next()) {
+                    String itemName = rs.getString("item_name");
+                    int quantity = rs.getInt("quantity");
+                    int threshold = rs.getInt("threshold");
+                    alertMessage.append(String.format("Item: %s is below threshold. Quantity: %d, Threshold: %d%n", itemName, quantity, threshold));
+                }
+                if (alertMessage.length() > 0) {
+                    JOptionPane.showMessageDialog(this, alertMessage.toString(), "Low Inventory Alert", JOptionPane.WARNING_MESSAGE);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Error checking inventory levels: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    // Export to CSV
     private void exportToCSV() {
+        if (!"admin".equals(currentUserRole)) {
+            JOptionPane.showMessageDialog(this, "You do not have permission to export data.", "Permission Denied", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
         JFileChooser fileChooser = new JFileChooser();
         int option = fileChooser.showSaveDialog(this);
         if (option == JFileChooser.APPROVE_OPTION) {
             File file = new File(fileChooser.getSelectedFile() + ".csv");
-            if (file.exists()) {
-                int confirm = JOptionPane.showConfirmDialog(this, "File already exists. Overwrite?", "Confirm Overwrite", JOptionPane.YES_NO_OPTION);
-                if (confirm != JOptionPane.YES_OPTION) {
-                    return;
-                }
-            }
             try (PrintWriter pw = new PrintWriter(new FileWriter(file))) {
-                // Write column names
-                for (int i = 0; i < tableModel.getColumnCount(); i++) {
-                    pw.print(tableModel.getColumnName(i));
-                    if (i < tableModel.getColumnCount() - 1) {
-                        pw.print(",");
-                    }
+                DefaultTableModel model = (DefaultTableModel) table.getModel();
+                for (int i = 0; i < model.getColumnCount(); i++) {
+                    pw.print(model.getColumnName(i));
+                    if (i < model.getColumnCount() - 1) pw.print(",");
                 }
                 pw.println();
-                // Write rows
-                for (int i = 0; i < tableModel.getRowCount(); i++) {
-                    for (int j = 0; j < tableModel.getColumnCount(); j++) {
-                        pw.print(tableModel.getValueAt(i, j).toString());
-                        if (j < tableModel.getColumnCount() - 1) {
-                            pw.print(",");
-                        }
+
+                for (int i = 0; i < model.getRowCount(); i++) {
+                    for (int j = 0; j < model.getColumnCount(); j++) {
+                        pw.print(model.getValueAt(i, j));
+                        if (j < model.getColumnCount() - 1) pw.print(",");
                     }
                     pw.println();
                 }
                 JOptionPane.showMessageDialog(this, "Data exported successfully.", "Export", JOptionPane.INFORMATION_MESSAGE);
             } catch (IOException e) {
-                JOptionPane.showMessageDialog(this, "Failed to export data.\n" + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
                 e.printStackTrace();
+                JOptionPane.showMessageDialog(this, "Error exporting data: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             }
         }
     }
 
-    private void search(String query, TableRowSorter<DefaultTableModel> sorter) {
-        if (query.trim().length() == 0) {
-            sorter.setRowFilter(null);
-        } else {
-            sorter.setRowFilter(RowFilter.regexFilter("(?i)" + query));
-        }
+    // Search Items
+    private void searchItems() {
+        String searchText = searchField.getText();
+        TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>((DefaultTableModel) table.getModel());
+        table.setRowSorter(sorter);
+        sorter.setRowFilter(searchText.isEmpty() ? null : RowFilter.regexFilter("(?i)" + searchText));
     }
 
-    private void addItem() {
-        if (validateFields()) {
-            try (PreparedStatement pst = conn.prepareStatement("INSERT INTO inventory(item_id, item_name, quantity, price, image_path) VALUES(?,?,?,?,?)")) {
-                pst.setString(1, txtItemId.getText().trim());
-                pst.setString(2, txtItemName.getText().trim());
-                pst.setInt(3, Integer.parseInt(txtQuantity.getText().trim()));
-                pst.setDouble(4, Double.parseDouble(txtPrice.getText().trim()));
-                pst.setString(5, txtImagePath.getText().trim());
-                pst.executeUpdate();
-                JOptionPane.showMessageDialog(this, "Item added successfully.");
-                loadTable();
-                clearFields();
-            } catch (SQLException e) {
-                JOptionPane.showMessageDialog(this, "Failed to add item. Item ID might already exist.\n" + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-                e.printStackTrace();
+    // Resize image for preview
+    private ImageIcon resizeImage(String imagePath) {
+        ImageIcon imageIcon = new ImageIcon(imagePath);
+        Image img = imageIcon.getImage().getScaledInstance(150, 150, Image.SCALE_SMOOTH);
+        return new ImageIcon(img);
+    }
+
+    // Build Table Model from ResultSet
+    private DefaultTableModel buildTableModel(ResultSet rs) throws SQLException {
+        ResultSetMetaData metaData = rs.getMetaData();
+        int columnCount = metaData.getColumnCount();
+
+        Vector<String> columnNames = new Vector<>();
+        for (int column = 1; column <= columnCount; column++) {
+            columnNames.add(metaData.getColumnName(column));
+        }
+
+        Vector<Vector<Object>> data = new Vector<>();
+        while (rs.next()) {
+            Vector<Object> row = new Vector<>();
+            for (int column = 1; column <= columnCount; column++) {
+                row.add(rs.getObject(column));
             }
+            data.add(row);
         }
-    }
 
-    private void updateItem() {
-        if (validateFields()) {
-            try (PreparedStatement pst = conn.prepareStatement("UPDATE inventory SET item_name=?, quantity=?, price=?, image_path=? WHERE item_id=?")) {
-                pst.setString(1, txtItemName.getText().trim());
-                pst.setInt(2, Integer.parseInt(txtQuantity.getText().trim()));
-                pst.setDouble(3, Double.parseDouble(txtPrice.getText().trim()));
-                pst.setString(4, txtImagePath.getText().trim());
-                pst.setString(5, txtItemId.getText().trim());
-                int affectedRows = pst.executeUpdate();
-                if (affectedRows > 0) {
-                    JOptionPane.showMessageDialog(this, "Item updated successfully.");
-                    loadTable();
-                    clearFields();
-                } else {
-                    JOptionPane.showMessageDialog(this, "Item ID not found.", "Update Failed", JOptionPane.WARNING_MESSAGE);
-                }
-            } catch (SQLException e) {
-                JOptionPane.showMessageDialog(this, "Failed to update item.\n" + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-                e.printStackTrace();
-            }
-        }
+        return new DefaultTableModel(data, columnNames);
     }
-
-    private void deleteItem() {
-        if (!txtItemId.getText().trim().isEmpty()) {
-            int confirm = JOptionPane.showConfirmDialog(this, "Are you sure you want to delete this item?", "Confirm Deletion", JOptionPane.YES_NO_OPTION);
-            if (confirm == JOptionPane.YES_OPTION) {
-                try (PreparedStatement pst = conn.prepareStatement("DELETE FROM inventory WHERE item_id=?")) {
-                    pst.setString(1, txtItemId.getText().trim());
-                    int affectedRows = pst.executeUpdate();
-                    if (affectedRows > 0) {
-                        JOptionPane.showMessageDialog(this, "Item deleted successfully.");
-                        loadTable();
-                        clearFields();
-                    } else {
-                        JOptionPane.showMessageDialog(this, "Item ID not found.", "Deletion Failed", JOptionPane.WARNING_MESSAGE);
-                    }
-                } catch (SQLException e) {
-                    JOptionPane.showMessageDialog(this, "Failed to delete item.\n" + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-                    e.printStackTrace();
-                }
-            }
-        } else {
-            JOptionPane.showMessageDialog(this, "Please select an item to delete.", "No Item Selected", JOptionPane.WARNING_MESSAGE);
-        }
-    }
-
-    private void clearFields() {
-        txtItemId.setText("");
-        txtItemName.setText("");
-        txtQuantity.setText("");
-        txtPrice.setText("");
-        txtImagePath.setText("");
-        lblImagePreview.setIcon(null); 
-        table.clearSelection();
-    }
-
 }
